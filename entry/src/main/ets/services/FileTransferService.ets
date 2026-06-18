@@ -276,28 +276,26 @@ export class FileTransferService {
   /**
    * 尝试获取当前 P2P 群组，没有则返回 null
    */
-  private tryGetCurrentGroup(): Promise<wifiManager.WifiP2pGroupInfo | null> {
-    return new Promise<wifiManager.WifiP2pGroupInfo | null>((resolve) => {
-      wifiManager.getCurrentGroup((err, group) => {
-        if (err || !group) {
-          resolve(null);
-          return;
-        }
-        resolve(group);
-      });
-    });
+  private async tryGetCurrentGroup(): Promise<wifiManager.WifiP2pGroupInfo | null> {
+    try {
+      const group = await wifiManager.getCurrentGroup();
+      return group;
+    } catch (_err) {
+      return null;
+    }
   }
 
   /**
    * 异步获取 GO IP 并缓存（非阻塞）
    */
-  private fetchGroupIpAsync(): void {
-    wifiManager.getCurrentGroup((err, group) => {
-      if (!err && group) {
-        this.goIpAddress = group.goIpAddress;
-        hilog.info(0x0001, TAG, 'GO IP fetched async: %{public}s', this.goIpAddress);
-      }
-    });
+  private async fetchGroupIpAsync(): Promise<void> {
+    try {
+      const group = await wifiManager.getCurrentGroup();
+      this.goIpAddress = group.goIpAddress;
+      hilog.info(0x0001, TAG, 'GO IP fetched async: %{public}s', this.goIpAddress);
+    } catch (_err) {
+      hilog.warn(0x0001, TAG, 'Failed to fetch GO IP async');
+    }
   }
 
   /**
@@ -328,16 +326,12 @@ export class FileTransferService {
    * 获取 GO IP 地址
    */
   private async fetchGroupIp(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      wifiManager.getCurrentGroup((err, group) => {
-        if (err) {
-          reject(new Error(`Get group failed: ${JSON.stringify(err)}`));
-          return;
-        }
-        this.goIpAddress = group.goIpAddress;
-        resolve();
-      });
-    });
+    try {
+      const group = await wifiManager.getCurrentGroup();
+      this.goIpAddress = group.goIpAddress;
+    } catch (err) {
+      throw new Error(`Get group failed: ${JSON.stringify(err)}`);
+    }
   }
 
   /**

@@ -157,25 +157,23 @@ export class TransportService {
     });
   }
 
-  private tryGetCurrentGroup(): Promise<wifiManager.WifiP2pGroupInfo | null> {
-    return new Promise<wifiManager.WifiP2pGroupInfo | null>((resolve) => {
-      wifiManager.getCurrentGroup((err, group) => {
-        if (err || !group) {
-          resolve(null);
-          return;
-        }
-        resolve(group);
-      });
-    });
+  private async tryGetCurrentGroup(): Promise<wifiManager.WifiP2pGroupInfo | null> {
+    try {
+      const group = await wifiManager.getCurrentGroup();
+      return group;
+    } catch (_err) {
+      return null;
+    }
   }
 
-  private fetchGroupIpAsync(): void {
-    wifiManager.getCurrentGroup((err, group) => {
-      if (!err && group) {
-        this.goIpAddress = group.goIpAddress;
-        hilog.info(0x0001, TAG, 'Transport: GO IP fetched: %{public}s', this.goIpAddress);
-      }
-    });
+  private async fetchGroupIpAsync(): Promise<void> {
+    try {
+      const group = await wifiManager.getCurrentGroup();
+      this.goIpAddress = group.goIpAddress;
+      hilog.info(0x0001, TAG, 'Transport: GO IP fetched: %{public}s', this.goIpAddress);
+    } catch (_err) {
+      hilog.warn(0x0001, TAG, 'Transport: Failed to fetch GO IP async');
+    }
   }
 
   /**
