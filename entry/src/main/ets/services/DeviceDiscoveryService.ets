@@ -2,7 +2,7 @@ import { Device } from '../models/Device';
 import { DeviceType, DeviceStatus, TransportProtocol, DeviceDiscoveryStatus } from '../models/Enums';
 import { ble, access } from '@kit.ConnectivityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { identifyShareDevice, ScanResultInput, SHARE_SERVICE_UUIDS } from '../utils/ShareProtocol';
+import { identifyShareDevice, ScanResultInput, SHARE_SERVICE_UUIDS, ShareVendor } from '../utils/ShareProtocol';
 
 export type DeviceDiscoveryCallback = (devices: Device[]) => void;
 
@@ -171,10 +171,8 @@ export class DeviceDiscoveryService {
         continue;
       }
 
-      // 互传联盟设备：标签显示厂商名 + 原始名称
-      const deviceName = shareInfo.vendor !== '未知' && !shareInfo.deviceName.includes(shareInfo.vendor)
-        ? `[${shareInfo.vendor}] ${shareInfo.deviceName}`
-        : shareInfo.deviceName;
+      // 互传联盟设备：生成设备名（原始名称，Display view 自动清理）
+      const deviceName = cleanDeviceNameForStorage(shareInfo.vendor, shareInfo.deviceName);
       const deviceType = DeviceType.MOBILE;
       const protocols = [TransportProtocol.BLUETOOTH, TransportProtocol.WIFI_DIRECT];
 
@@ -187,12 +185,14 @@ export class DeviceDiscoveryService {
         existing.status = DeviceStatus.ONLINE;
         if (deviceName.length > existing.name.length) {
           existing.name = deviceName;
+          existing.vendor = shareInfo.vendor;
           existing.supportedProtocols = protocols;
         }
       } else {
         this.discoveredDevices.push(new Device(
           result.deviceId,
           deviceName,
+          shareInfo.vendor,
           '',
           deviceType,
           protocols,
@@ -250,4 +250,18 @@ export class DeviceDiscoveryService {
       return false;
     }
   }
+}
+
+/**
+ * 生成存储用的原始设备名
+ * - 对于已知厂商设备，若原始名已经包含厂商名，直接使用
+ * - 否则按"[厂商] 设备名"格式存储（display 层进行清理）
+ */
+function cleanDeviceNameForStorage(vendor: ShareVendor, deviceName: string): string {
+  const raw = deviceName.trim();
+  const vendorStr = String(vendor);
+  if (raw.includes(vendorStr) || vendorStr === '未知') {
+    return raw || '附近设备';
+  }
+  return `[${vendorStr}] ${raw}`;
 }

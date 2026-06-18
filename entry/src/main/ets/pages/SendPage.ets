@@ -157,7 +157,7 @@ export struct SendPage {
 
           if (this.selectedDevice) {
             Row() {
-              Text(this.selectedDevice.name)
+              Text(this.selectedDevice?.displayName || '')
                 .fontSize(15)
                 .fontColor(AppTheme.getTextPrimary(this.isDark))
                 .layoutWeight(1)

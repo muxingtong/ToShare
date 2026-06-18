@@ -1,11 +1,12 @@
 import { Device } from '../models/Device';
 import { TransportProtocol, DeviceType, DeviceStatus } from '../models/Enums';
+import { ShareVendor } from '../utils/ShareProtocol';
 import { ProtocolBadge } from './ProtocolBadge';
 import { AppColors } from '../theme/AppColors';
 
 @Component
 export struct DeviceCard {
-  @Prop device: Device = new Device('', '', '', DeviceType.MOBILE, [], 0, DeviceStatus.ONLINE, 0);
+  @Prop device: Device = new Device('', '', ShareVendor.UNKNOWN, '', DeviceType.MOBILE, [], 0, DeviceStatus.ONLINE, 0);
 
   build() {
     Row() {
@@ -47,7 +48,7 @@ export struct DeviceCard {
       // 中间：设备信息
       Column() {
         Row() {
-          Text(this.device.name)
+          Text(this.device.displayName)
             .fontSize(15)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.device.status === DeviceStatus.ONLINE ?
@@ -55,14 +56,14 @@ export struct DeviceCard {
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
 
-          // 厂商标签（如果有的话）
-          if (this.isShareDevice()) {
+          // 厂商标签
+          if (this.device.vendor !== ShareVendor.UNKNOWN) {
             Column()
               .padding({ left: 6, right: 6, top: 2, bottom: 2 })
               .borderRadius(6)
               .backgroundColor('#10A29BFE')
               .margin({ left: 6 })
-            Text('互传')
+            Text(this.getVendorLabel())
               .fontSize(10)
               .fontColor('#6C5CE7')
               .fontWeight(FontWeight.Medium)
@@ -130,8 +131,23 @@ export struct DeviceCard {
     .shadow({ radius: 8, color: '#10000000', offsetY: 2 })
   }
 
-  private isShareDevice(): boolean {
-    return this.device.supportedProtocols.includes(TransportProtocol.WIFI_DIRECT);
+  private getVendorLabel(): string {
+    if (this.device.vendor === ShareVendor.OPPO) {
+      return 'OPPO互传';
+    }
+    if (this.device.vendor === ShareVendor.XIAOMI) {
+      return '小米互传';
+    }
+    if (this.device.vendor === ShareVendor.VIVO) {
+      return 'VIVO互传';
+    }
+    if (this.device.vendor === ShareVendor.HUAWEI) {
+      return '华为分享';
+    }
+    if (this.device.vendor === ShareVendor.SAMSUNG) {
+      return '三星互传';
+    }
+    return '互传';
   }
 
   private getDeviceTypeLabel(): string {
