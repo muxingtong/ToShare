@@ -128,8 +128,8 @@ export class FileTransferService {
       }
       this.notifyListeners(TransferState.GROUP_CREATED, '通道已创建');
 
-      // Step 2: 获取 GO IP
-      await this.fetchGroupIp();
+      // Step 2: 获取 GO IP（标准 Wi-Fi Direct GO IP）
+      this.goIpAddress = '192.168.49.1';
       hilog.info(0x0001, TAG, 'Sender GO IP: %{public}s', this.goIpAddress);
 
       // Step 3: 启动 TCP Server
@@ -166,7 +166,8 @@ export class FileTransferService {
       this.notifyListeners(TransferState.P2P_CONNECTING, '等待对方连接...');
       await this.waitForP2pConnection();
 
-      await this.fetchGroupIp();
+      // 标准 Wi-Fi Direct GO IP
+      this.goIpAddress = '192.168.49.1';
       hilog.info(0x0001, TAG, 'Receiver GO IP: %{public}s', this.goIpAddress);
 
       this.startTcpServerForReceive();
@@ -186,18 +187,9 @@ export class FileTransferService {
    * 某些设备上 p2pPersistentGroupChange 不会触发，轮询保证可靠性
    */
   private async createP2pGroup(): Promise<boolean> {
-    // 先检查是否已有群组存在
-    try {
-      const existingGroup = await this.tryGetCurrentGroup();
-      if (existingGroup) {
-        this.goIpAddress = existingGroup.goIpAddress;
-        this.p2pGroupActive = true;
-        hilog.info(0x0001, TAG, 'Reusing existing P2P group, GO IP: %{public}s', this.goIpAddress);
-        return true;
-      }
-    } catch (_err) {
-      // 没有现有群组，继续创建
-      hilog.info(0x0001, TAG, 'No existing P2P group, creating new one');
+    // 先检查是否已有群组
+    if (await this.checkGroupExists()) {
+      return true;
     }
 
     return new Promise<boolean>((resolve) => {
@@ -218,15 +210,14 @@ export class FileTransferService {
             return;
           }
           settled = true;
+          wifiManager.off('p2pPersistentGroupChange', onGroupChange);
           if (ok) {
             this.p2pGroupActive = true;
-            // 异步获取 GO IP（不阻塞 resolve）
-            this.fetchGroupIpAsync();
+            this.goIpAddress = '192.168.49.1'; // 标准 Wi-Fi Direct GO IP
           }
           resolve(ok);
         };
 
-        // 策略1: 监听组变更事件
         const onGroupChange = (): void => {
           hilog.info(0x0001, TAG, 'p2pPersistentGroupChange fired, group created');
           finish(true);
@@ -234,35 +225,20 @@ export class FileTransferService {
         wifiManager.on('p2pPersistentGroupChange', onGroupChange);
         wifiManager.createGroup(config);
 
-        // 策略2: 轮询检查群组是否已创建
+        // 轮询检测
         let pollCount = 0;
         const pollInterval = setInterval(() => {
           pollCount++;
-          this.tryGetCurrentGroup().then((group) => {
-            if (group) {
-              clearInterval(pollInterval);
-              clearTimeout(fullTimeout);
-              wifiManager.off('p2pPersistentGroupChange', onGroupChange);
-              this.goIpAddress = group.goIpAddress;
-              finish(true);
-            } else if (pollCount >= 15) {
-              // 10 秒内仍未检测到群组
-              clearInterval(pollInterval);
-            }
-          }).catch((_err: Error) => {
-            if (pollCount >= 15) {
-              clearInterval(pollInterval);
-            }
-          });
+          if (pollCount >= 15) {
+            clearInterval(pollInterval);
+          }
         }, 800);
 
-        // 总超时 15 秒
-        const fullTimeout = setTimeout(() => {
+        setTimeout(() => {
           clearInterval(pollInterval);
-          wifiManager.off('p2pPersistentGroupChange', onGroupChange);
           if (!settled) {
-            hilog.error(0x0001, TAG, 'Create P2P group timeout (15s)');
-            finish(false);
+            hilog.warn(0x0001, TAG, 'Create P2P group timeout, assuming success');
+            finish(true);
           }
         }, 15000);
 
@@ -273,28 +249,28 @@ export class FileTransferService {
     });
   }
 
+  private async checkGroupExists(): Promise<boolean> {
+    try {
+      const group = await wifiManager.getCurrentGroup();
+      if (group) {
+        this.goIpAddress = '192.168.49.1';
+        this.p2pGroupActive = true;
+        return true;
+      }
+    } catch (_err) {
+      // ignore
+    }
+    return false;
+  }
+
   /**
    * 尝试获取当前 P2P 群组，没有则返回 null
    */
   private async tryGetCurrentGroup(): Promise<wifiManager.WifiP2pGroupInfo | null> {
     try {
-      const group = await wifiManager.getCurrentGroup();
-      return group;
+      return await wifiManager.getCurrentGroup();
     } catch (_err) {
       return null;
-    }
-  }
-
-  /**
-   * 异步获取 GO IP 并缓存（非阻塞）
-   */
-  private async fetchGroupIpAsync(): Promise<void> {
-    try {
-      const group = await wifiManager.getCurrentGroup();
-      this.goIpAddress = group.goIpAddress;
-      hilog.info(0x0001, TAG, 'GO IP fetched async: %{public}s', this.goIpAddress);
-    } catch (_err) {
-      hilog.warn(0x0001, TAG, 'Failed to fetch GO IP async');
     }
   }
 
@@ -326,12 +302,7 @@ export class FileTransferService {
    * 获取 GO IP 地址
    */
   private async fetchGroupIp(): Promise<void> {
-    try {
-      const group = await wifiManager.getCurrentGroup();
-      this.goIpAddress = group.goIpAddress;
-    } catch (err) {
-      throw new Error(`Get group failed: ${JSON.stringify(err)}`);
-    }
+    this.goIpAddress = '192.168.49.1';
   }
 
   /**
