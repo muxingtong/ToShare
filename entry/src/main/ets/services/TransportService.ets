@@ -95,11 +95,16 @@ export class TransportService {
         };
 
         let settled = false;
+        let groupChangeHandler: (() => void) | null = null;
         const finish = (ok: boolean): void => {
           if (settled) {
             return;
           }
           settled = true;
+          if (groupChangeHandler) {
+            wifiManager.off('p2pPersistentGroupChange', groupChangeHandler);
+            groupChangeHandler = null;
+          }
           if (ok) {
             this.p2pGroupActive = true;
             this.goIpAddress = '192.168.49.1';
@@ -107,9 +112,10 @@ export class TransportService {
           resolve(ok);
         };
 
-        wifiManager.on('p2pPersistentGroupChange', () => {
+        groupChangeHandler = (): void => {
           finish(true);
-        });
+        };
+        wifiManager.on('p2pPersistentGroupChange', groupChangeHandler);
         wifiManager.createGroup(config);
 
         setTimeout(() => {

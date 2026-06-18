@@ -181,13 +181,10 @@ export class FileTransferService {
   /**
    * 创建 Wi-Fi Direct P2P 群组（作为 GO）
    *
-   * 使用双轨检测策略：
-   * 1. 监听 p2pPersistentGroupChange 事件
-   * 2. 同时轮询 getCurrentGroup() 检查群组是否已创建
-   * 某些设备上 p2pPersistentGroupChange 不会触发，轮询保证可靠性
+   * 监听 p2pPersistentGroupChange 事件确认群组已生效。
+   * 15 秒超时后默认假设成功（createGroup 即使事件未触发也往往已生效）。
    */
   private async createP2pGroup(): Promise<boolean> {
-    // 先检查是否已有群组
     if (await this.checkGroupExists()) {
       return true;
     }
@@ -213,31 +210,20 @@ export class FileTransferService {
           wifiManager.off('p2pPersistentGroupChange', onGroupChange);
           if (ok) {
             this.p2pGroupActive = true;
-            this.goIpAddress = '192.168.49.1'; // 标准 Wi-Fi Direct GO IP
+            this.goIpAddress = '192.168.49.1';
           }
           resolve(ok);
         };
 
         const onGroupChange = (): void => {
-          hilog.info(0x0001, TAG, 'p2pPersistentGroupChange fired, group created');
           finish(true);
         };
         wifiManager.on('p2pPersistentGroupChange', onGroupChange);
         wifiManager.createGroup(config);
 
-        // 轮询检测
-        let pollCount = 0;
-        const pollInterval = setInterval(() => {
-          pollCount++;
-          if (pollCount >= 15) {
-            clearInterval(pollInterval);
-          }
-        }, 800);
-
         setTimeout(() => {
-          clearInterval(pollInterval);
           if (!settled) {
-            hilog.warn(0x0001, TAG, 'Create P2P group timeout, assuming success');
+            wifiManager.off('p2pPersistentGroupChange', onGroupChange);
             finish(true);
           }
         }, 15000);
@@ -264,17 +250,6 @@ export class FileTransferService {
   }
 
   /**
-   * 尝试获取当前 P2P 群组，没有则返回 null
-   */
-  private async tryGetCurrentGroup(): Promise<wifiManager.WifiP2pGroupInfo | null> {
-    try {
-      return await wifiManager.getCurrentGroup();
-    } catch (_err) {
-      return null;
-    }
-  }
-
-  /**
    * 等待对端 P2P 连接
    */
   private waitForP2pConnection(): Promise<void> {
@@ -296,13 +271,6 @@ export class FileTransferService {
 
       wifiManager.on('p2pConnectionChange', onConnectionChange);
     });
-  }
-
-  /**
-   * 获取 GO IP 地址
-   */
-  private async fetchGroupIp(): Promise<void> {
-    this.goIpAddress = '192.168.49.1';
   }
 
   /**

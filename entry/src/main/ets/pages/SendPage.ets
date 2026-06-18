@@ -4,7 +4,6 @@ import { TransferStatus } from '../models/Enums';
 import { Device } from '../models/Device';
 import { FilePickerService } from '../services/FilePickerService';
 import { FileTransferService, TransferState, TransferStatusCallback } from '../services/FileTransferService';
-import { TransportService } from '../services/TransportService';
 import { HistoryRepository } from '../services/HistoryRepository';
 import { FileSizeFormatter } from '../utils/FileSizeFormatter';
 import { AppTheme, BrandGradient, HeaderGradient } from '../theme/AppTheme';
@@ -21,7 +20,6 @@ export struct SendPage {
   @State isDark: boolean = false;
   private filePicker: FilePickerService = FilePickerService.getInstance();
   private transferService: FileTransferService = FileTransferService.getInstance();
-  private transport: TransportService = TransportService.getInstance();
   private headerGradient: HeaderGradient = new HeaderGradient();
   private brandGradient: BrandGradient = new BrandGradient();
 
