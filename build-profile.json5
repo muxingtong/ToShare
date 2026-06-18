@@ -1,0 +1,51 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\14404\\.ohos\\config\\default_ToShare_HarmonyOS_wQCfCLSlbG5r1QEJOhnUG0yubznZJ-ryeI0V1M5Rl7A=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B38266262A402CB03087312576522FA5B18F55C9B3E1B94A81ADF44CF2DA964F4403484854C96A4",
+          "profile": "C:\\Users\\14404\\.ohos\\config\\default_ToShare_HarmonyOS_wQCfCLSlbG5r1QEJOhnUG0yubznZJ-ryeI0V1M5Rl7A=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\14404\\.ohos\\config\\default_ToShare_HarmonyOS_wQCfCLSlbG5r1QEJOhnUG0yubznZJ-ryeI0V1M5Rl7A=.p12",
+          "storePassword": "0000001BFAC1013752E0493FC009FF4EF476A9FC996FE955AF9FEA9C47428A40A3DE7239AF91CFCC94CD48"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compileSdkVersion": "6.1.1(24)",
+        "compatibleSdkVersion": "6.1.0(23)",
+        "targetSdkVersion": "6.1.0(23)",
+        "runtimeOS": "HarmonyOS",
+        "arkTSVersion": "1.1",
+        "buildOption": {
+          "strictMode": {
+            "noExternalImportByPath": false,
+            "caseSensitiveCheck": true,
+            "useNormalizedOHMUrl": true
+          }
+        }
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}

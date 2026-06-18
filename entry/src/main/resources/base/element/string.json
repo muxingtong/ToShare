@@ -1,0 +1,40 @@
+{
+  "string": [
+    {
+      "name": "app_name",
+      "value": "ToShare"
+    },
+    {
+      "name": "app_description",
+      "value": "本地近场文件共享应用，支持WiFi直连、蓝牙、NFC多协议安全传输"
+    },
+    {
+      "name": "entry_desc",
+      "value": "ToShare主模块"
+    },
+    {
+      "name": "mainability_description",
+      "value": "ToShare主Ability"
+    },
+    {
+      "name": "permission_internet_reason",
+      "value": "用于WiFi直连传输文件"
+    },
+    {
+      "name": "permission_bluetooth_reason",
+      "value": "用于扫描和连接附近蓝牙设备以传输文件"
+    },
+    {
+      "name": "permission_wifi_reason",
+      "value": "用于WiFi直连传输"
+    },
+    {
+      "name": "permission_wifi_info_reason",
+      "value": "用于获取WiFi状态信息"
+    },
+    {
+      "name": "permission_nfc_tag_reason",
+      "value": "用于通过NFC触碰快速配对"
+    }
+  ]
+}

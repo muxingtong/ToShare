@@ -1,0 +1,14 @@
+{
+  "name": "ToShare_HarmonyOS",
+  "version": "1.0.0",
+  "description": "ToShare - 本地近场文件共享应用（鸿蒙版）",
+  "main": "index.js",
+  "scripts": {
+    "build": "hvigor build"
+  },
+  "dependencies": {
+    "@ohos/hypium": "1.0.6",
+    "@ohos/hvigor": "4.1.0",
+    "@ohos/hvigor-ohos-plugin": "4.1.0"
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "ohos-module-entry": {
+    "SELECT_TARGET": "default",
+    "MODULE_BUILD_DIR": "E:\\golutra\\ToShare_HarmonyOS\\entry\\build",
+    "TARGETS": {
+      "default": {
+        "SOURCE_ROOT": "E:\\golutra\\ToShare_HarmonyOS\\entry\\src\\main",
+        "RESOURCES_PATH": [
+          "E:\\golutra\\ToShare_HarmonyOS\\entry\\src\\main\\resources"
+        ],
+        "BUILD_PATH": {
+          "OUTPUT_PATH": "E:\\golutra\\ToShare_HarmonyOS\\entry\\build\\default\\outputs\\default",
+          "INTERMEDIA_PATH": "E:\\golutra\\ToShare_HarmonyOS\\entry\\build\\default\\intermediates",
+          "JS_ASSETS_PATH": "E:\\golutra\\ToShare_HarmonyOS\\entry\\build\\default\\intermediates\\loader_out\\default",
+          "JS_LITE_ASSETS_PATH": "E:\\golutra\\ToShare_HarmonyOS\\entry\\build\\default\\intermediates\\loader_out_lite\\default",
+          "RES_PATH": "E:\\golutra\\ToShare_HarmonyOS\\entry\\build\\default\\intermediates\\res\\default",
+          "RES_PROFILE_PATH": "E:\\golutra\\ToShare_HarmonyOS\\entry\\build\\default\\intermediates\\res\\default\\resources\\base\\profile",
+          "ETS_SUPER_VISUAL_PATH": "E:\\golutra\\ToShare_HarmonyOS\\entry\\build\\default\\cache\\default\\default@CompileArkTS\\esmodule",
+          "JS_SUPER_VISUAL_PATH": "E:\\golutra\\ToShare_HarmonyOS\\entry\\build\\default\\cache\\default\\default@CompileJS\\jsbundle",
+          "WORKER_LOADER": "E:\\golutra\\ToShare_HarmonyOS\\entry\\build\\default\\intermediates\\loader\\default\\loader.json",
+          "MANIFEST_JSON": "E:\\golutra\\ToShare_HarmonyOS\\entry\\build\\default\\intermediates\\manifest\\default",
+          "OUTPUT_METADATA_JSON": "E:\\golutra\\ToShare_HarmonyOS\\entry\\build\\default\\intermediates\\hap_metadata\\default\\output_metadata.json",
+          "SOURCE_MAP_DIR": "E:\\golutra\\ToShare_HarmonyOS\\entry\\build\\default\\intermediates\\source_map\\default"
+        },
+        "BUILD_OPTION": {
+          "debuggable": true
+        }
+      }
+    },
+    "BUILD_OPTION": {
+      "default-default": {
+        "debuggable": true,
+        "copyFrom": "default",
+        "strictMode": {
+          "noExternalImportByPath": false,
+          "caseSensitiveCheck": true,
+          "useNormalizedOHMUrl": true
+        },
+        "arkOptions": {}
+      }
+    },
+    "BUILD_PROFILE_OPT": {
+      "apiType": "stageMode",
+      "buildOption": {
+        "arkOptions": {}
+      },
+      "targets": [
+        {
+          "name": "default",
+          "runtimeOS": "HarmonyOS"
+        }
+      ]
+    },
+    "BUILD_CACHE_DIR": ""
+  },
+  "ohos-project": {
+    "SELECT_PRODUCT_NAME": "default",
+    "MODULE_BUILD_DIR": "E:\\golutra\\ToShare_HarmonyOS\\build",
+    "BUNDLE_NAME": "com.toshare.harmonyos",
+    "VERSION_CODE": 1,
+    "VERSION_NAME": "1.0.0",
+    "BUILD_PATH": {
+      "OUTPUT_PATH": "E:\\golutra\\ToShare_HarmonyOS\\build\\outputs\\default"
+    },
+    "MODULES": [
+      {
+        "name": "entry",
+        "srcPath": "E:\\golutra\\ToShare_HarmonyOS\\entry",
+        "targets": [
+          {
+            "name": "default",
+            "applyToProducts": [
+              "default"
+            ]
+          }
+        ],
+        "belongProjectPath": "E:\\golutra\\ToShare_HarmonyOS"
+      }
+    ],
+    "PROFILE_OPT": {
+      "app": {
+        "signingConfigs": [
+          {
+            "name": "default",
+            "type": "HarmonyOS",
+            "material": {
+              "certpath": "C:\\Users\\14404\\.ohos\\config\\default_ToShare_HarmonyOS_wQCfCLSlbG5r1QEJOhnUG0yubznZJ-ryeI0V1M5Rl7A=.cer",
+              "keyAlias": "debugKey",
+              "keyPassword": "0000001B38266262A402CB03087312576522FA5B18F55C9B3E1B94A81ADF44CF2DA964F4403484854C96A4",
+              "profile": "C:\\Users\\14404\\.ohos\\config\\default_ToShare_HarmonyOS_wQCfCLSlbG5r1QEJOhnUG0yubznZJ-ryeI0V1M5Rl7A=.p7b",
+              "signAlg": "SHA256withECDSA",
+              "storeFile": "C:\\Users\\14404\\.ohos\\config\\default_ToShare_HarmonyOS_wQCfCLSlbG5r1QEJOhnUG0yubznZJ-ryeI0V1M5Rl7A=.p12",
+              "storePassword": "0000001BFAC1013752E0493FC009FF4EF476A9FC996FE955AF9FEA9C47428A40A3DE7239AF91CFCC94CD48"
+            }
+          }
+        ],
+        "products": [
+          {
+            "name": "default",
+            "signingConfig": "default",
+            "compileSdkVersion": "6.1.1(24)",
+            "compatibleSdkVersion": "6.1.0(23)",
+            "targetSdkVersion": "6.1.0(23)",
+            "runtimeOS": "HarmonyOS",
+            "arkTSVersion": "1.1",
+            "buildOption": {
+              "strictMode": {
+                "noExternalImportByPath": false,
+                "caseSensitiveCheck": true,
+                "useNormalizedOHMUrl": true
+              }
+            }
+          }
+        ]
+      },
+      "modules": [
+        {
+          "name": "entry",
+          "srcPath": "./entry",
+          "targets": [
+            {
+              "name": "default",
+              "applyToProducts": [
+                "default"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "CONFIG_PROPERTIES": {
+      "enableSignTask": true,
+      "skipNativeIncremental": false,
+      "hvigor.keepDependency": true
+    },
+    "OVERALL_PROJECT_PATHS": [
+      "E:\\golutra\\ToShare_HarmonyOS"
+    ],
+    "BUILD_CACHE_DIR": ""
+  }
+}

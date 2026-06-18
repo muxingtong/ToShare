@@ -1,0 +1,40 @@
+{
+  "string": [
+    {
+      "name": "app_name",
+      "value": "ToShare"
+    },
+    {
+      "name": "app_description",
+      "value": "Local near-field file sharing app with WiFi Direct, BLE, NFC support"
+    },
+    {
+      "name": "entry_desc",
+      "value": "ToShare main module"
+    },
+    {
+      "name": "mainability_description",
+      "value": "ToShare Main Ability"
+    },
+    {
+      "name": "permission_internet_reason",
+      "value": "Used for WiFi Direct file transfer"
+    },
+    {
+      "name": "permission_bluetooth_reason",
+      "value": "Used to scan and connect nearby Bluetooth devices for file transfer"
+    },
+    {
+      "name": "permission_wifi_reason",
+      "value": "Used for WiFi Direct transfer"
+    },
+    {
+      "name": "permission_wifi_info_reason",
+      "value": "Used to get WiFi status"
+    },
+    {
+      "name": "permission_nfc_tag_reason",
+      "value": "Used for NFC quick pairing"
+    }
+  ]
+}
