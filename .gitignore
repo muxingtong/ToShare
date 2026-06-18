@@ -1,0 +1,17 @@
+# HarmonyOS build outputs
+entry/build/
+.hvigor/outputs/
+.hvigor/report/
+.hvigor/cache/
+
+# IDE
+.idea/
+*.iml
+.gradle/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/

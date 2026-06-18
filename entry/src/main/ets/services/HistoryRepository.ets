@@ -134,22 +134,26 @@ export class HistoryRepository {
     if (!this.pref) {
       return;
     }
-    const plainList: HistoryPlain[] = [];
-    for (let i = 0; i < list.length; i++) {
-      const h = list[i];
-      const plain: HistoryPlain = {
-        id: h.id,
-        peerDeviceName: h.peerDeviceName,
-        isSender: h.isSender,
-        fileCount: h.fileCount,
-        totalSize: h.totalSize,
-        timestamp: h.timestamp,
-        status: h.status,
-        fileNames: h.fileNames
-      };
-      plainList.push(plain);
+    try {
+      const plainList: HistoryPlain[] = [];
+      for (let i = 0; i < list.length; i++) {
+        const h = list[i];
+        const plain: HistoryPlain = {
+          id: h.id,
+          peerDeviceName: h.peerDeviceName,
+          isSender: h.isSender,
+          fileCount: h.fileCount,
+          totalSize: h.totalSize,
+          timestamp: h.timestamp,
+          status: h.status,
+          fileNames: h.fileNames
+        };
+        plainList.push(plain);
+      }
+      await this.pref.put(AppConstants.HISTORY_STORAGE_KEY, JSON.stringify(plainList));
+      await this.pref.flush();
+    } catch (err) {
+      hilog.error(0x0001, TAG, 'Save list failed: %{public}s', JSON.stringify(err));
     }
-    await this.pref.put(AppConstants.HISTORY_STORAGE_KEY, JSON.stringify(plainList));
-    await this.pref.flush();
   }
 }

@@ -4,8 +4,8 @@ import { AppColors } from './AppColors';
  * 沉浸光效主题系统
  */
 export class AppTheme {
-  static getColors(isDark: boolean): object {
-    return AppColors;
+  static getColors(isDark: boolean): ResourceColor {
+    return isDark ? '#1C1B1F' : '#F5F5F5';
   }
 
   static getCardBackground(isDark: boolean): ResourceColor {

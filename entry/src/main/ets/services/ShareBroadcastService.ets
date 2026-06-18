@@ -358,12 +358,19 @@ export class ShareBroadcastService {
     hilog.info(0x0001, TAG, 'Starting BLE advertising with service=%{public}s, manufacturer=0x%{public}x',
       this.SHARE_SERVICE_UUID, this.OPPO_MANUFACTURER_ID);
 
-    this.advHandle = await ble.startAdvertising(advertisingParams);
-    this._status = BroadcastStatus.BROADCASTING;
-    this.notifyListeners(BroadcastStatus.BROADCASTING,
-      `广播已启动 (${this.deviceName}) | GATT 服务已就绪 | advHandle=${this.advHandle}`);
-
-    hilog.info(0x0001, TAG, 'Broadcast started, advHandle: %{public}d, GATT server ready', this.advHandle);
+    try {
+      this.advHandle = await ble.startAdvertising(advertisingParams);
+      this._status = BroadcastStatus.BROADCASTING;
+      this.notifyListeners(BroadcastStatus.BROADCASTING,
+        `广播已启动 (${this.deviceName}) | GATT 服务已就绪 | advHandle=${this.advHandle}`);
+      hilog.info(0x0001, TAG, 'Broadcast started, advHandle: %{public}d, GATT server ready', this.advHandle);
+    } catch (err) {
+      this._status = BroadcastStatus.ERROR;
+      const msg = `广播启动失败: ${(err as Error).message}`;
+      hilog.error(0x0001, TAG, 'startAdvertising failed: %{public}s', JSON.stringify(err));
+      this.notifyListeners(BroadcastStatus.ERROR, msg);
+      return;
+    }
   }
 
   async stopBroadcast(): Promise<void> {

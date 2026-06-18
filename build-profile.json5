@@ -18,8 +18,9 @@
     "products": [
       {
         "name": "default",
-        "signingConfig": "default",
-        "compileSdkVersion": "6.1.1(24)",
+        // 签名在服务器上不可用，构建后会输出 unsigned HAP
+      // "signingConfig": "default",
+        "compileSdkVersion": "6.1.0(23)",
         "compatibleSdkVersion": "6.1.0(23)",
         "targetSdkVersion": "6.1.0(23)",
         "runtimeOS": "HarmonyOS",

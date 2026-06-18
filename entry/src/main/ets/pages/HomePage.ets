@@ -12,7 +12,7 @@ import { SettingsPage } from './SettingsPage';
 import { AppTheme, HeaderGradient, BrandGradient, WarmGradient } from '../theme/AppTheme';
 import { AppColors } from '../theme/AppColors';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { picker } from '@kit.CoreFileKit';
+import { FilePickerService } from '../services/FilePickerService';
 import { abilityAccessCtrl, common, Permissions } from '@kit.AbilityKit';
 import { HdsTabs, HdsTabsController, hdsMaterial } from '@kit.UIDesignKit';
 import { SymbolGlyphModifier } from '@kit.ArkUI';
@@ -34,6 +34,7 @@ struct HomePage {
   private discoveryService: DeviceDiscoveryService = DeviceDiscoveryService.getInstance();
   private broadcastService: ShareBroadcastService = ShareBroadcastService.getInstance();
   private transferService: FileTransferService = FileTransferService.getInstance();
+  private filePicker: FilePickerService = FilePickerService.getInstance();
   @State materialLevel: hdsMaterial.MaterialLevel = hdsMaterial.MaterialLevel.ADAPTIVE;
 
   aboutToAppear(): void {
@@ -138,22 +139,17 @@ struct HomePage {
 
   async sendImageToDevice(device: Device): Promise<void> {
     try {
-      const photoSelectOptions = new picker.PhotoSelectOptions();
-      photoSelectOptions.MIMEType = picker.PhotoViewMIMETypes.IMAGE_TYPE;
-      photoSelectOptions.maxSelectNumber = 1;
-      const photoPicker = new picker.PhotoViewPicker();
-      const result = await photoPicker.select(photoSelectOptions);
-      if (result.photoUris.length === 0) {
+      const files = await this.filePicker.pickImages(1);
+      if (files.length === 0) {
         return;
       }
-      const fileUri = result.photoUris[0];
-      const fileName = fileUri.split('/').pop() || 'image.jpg';
+      const file = files[0];
       if (!this.isBroadcasting) {
         this.requestBluetoothPermissionAndBroadcast();
         await this.delay(1000);
       }
       this.showTransferPanel = true;
-      this.transferService.startAsSender(fileUri, fileName);
+      this.transferService.startAsSender(file.path, file.name);
     } catch (err) {
       hilog.error(0x0001, 'ToShare', 'Select photo failed: %{public}s', JSON.stringify(err));
     }

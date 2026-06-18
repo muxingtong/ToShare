@@ -2,7 +2,7 @@ import { Device } from '../models/Device';
 import { DeviceType, DeviceStatus, TransportProtocol, DeviceDiscoveryStatus } from '../models/Enums';
 import { ble, access } from '@kit.ConnectivityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { identifyShareDevice, ScanResultInput } from '../utils/ShareProtocol';
+import { identifyShareDevice, ScanResultInput, SHARE_SERVICE_UUIDS } from '../utils/ShareProtocol';
 
 export type DeviceDiscoveryCallback = (devices: Device[]) => void;
 
@@ -12,7 +12,12 @@ export class DeviceDiscoveryService {
   private _status: DeviceDiscoveryStatus = DeviceDiscoveryStatus.IDLE;
   private scanTimeout: number = -1;
   private listeners: DeviceDiscoveryCallback[] = [];
+  // 设备超过 15 秒未广播即视为离线，从列表中移除
+  private static readonly DEVICE_EXPIRY_MS: number = 15000;
+  // 过期设备清理间隔 (每 5 秒检查一次)
+  private static readonly EXPIRY_CHECK_INTERVAL_MS: number = 5000;
   private scanDuration: number = 12000; // 12秒扫描，确保能捕获到100ms间隔的广播
+  private expiryTimer: number = -1;
 
   static getInstance(): DeviceDiscoveryService {
     if (!DeviceDiscoveryService.instance) {
@@ -62,12 +67,14 @@ export class DeviceDiscoveryService {
     this.notifyListeners();
     this.startBLEScan();
     this.startScanTimer();
+    this.startExpiryCheck();
   }
 
   stopDiscovery(): void {
     this._status = DeviceDiscoveryStatus.IDLE;
     this.stopBLEScan();
     this.clearScanTimer();
+    this.stopExpiryCheck();
     this.notifyListeners();
   }
 
@@ -99,16 +106,21 @@ export class DeviceDiscoveryService {
     try {
       ble.on('BLEDeviceFind', this.onBLEDeviceFind);
 
-      // 使用主动扫描模式以获取更多广播数据（尤其是Scan Response中的设备名）
       const scanOptions: ble.ScanOptions = {
-        interval: 0,  // 0 = 持续扫描直到手动停止
+        interval: 0,
         dutyMode: ble.ScanDuty.SCAN_MODE_LOW_POWER,
         matchMode: ble.MatchMode.MATCH_MODE_AGGRESSIVE
       };
 
-      // 不设置过滤器(null)，发现所有BLE设备，由应用层ShareProtocol过滤互传设备
-      ble.startBLEScan(null, scanOptions);
-      hilog.info(0x0001, 'ToShare', 'BLE scan started (active mode, no filter)');
+      // ⭐ 系统级 BLE 过滤：只扫描已知互传联盟设备的 Service UUID
+      // 减少系统负载和功耗，同时降低应用层收到无关设备的数量
+      const filters: ble.ScanFilter[] = [];
+      for (let i = 0; i < SHARE_SERVICE_UUIDS.length; i++) {
+        filters.push({ serviceUuid: SHARE_SERVICE_UUIDS[i] });
+      }
+
+      ble.startBLEScan(filters, scanOptions);
+      hilog.info(0x0001, 'ToShare', 'BLE scan started with %{public}d share UUID filters', filters.length);
     } catch (err) {
       hilog.error(0x0001, 'ToShare', 'BLE scan failed: %{public}s', JSON.stringify(err));
       this._status = DeviceDiscoveryStatus.ERROR;
@@ -146,7 +158,7 @@ export class DeviceDiscoveryService {
 
       // 输出详细的识别结果
       if (shareInfo.isShareDevice || shareInfo.vendor !== '未知' ||
-          (shareInfo.serviceUuids.length > 0)) {
+          shareInfo.serviceUuids.length > 0) {
         hilog.info(0x0001, 'ToShare',
           '  --> SHARE_DEVICE: vendor=%{public}s, isShare=%{public}b, name=%{public}s, rssi=%{public}d, uuids=%{public}s',
           shareInfo.vendor, shareInfo.isShareDevice,
@@ -154,39 +166,31 @@ export class DeviceDiscoveryService {
           shareInfo.serviceUuids.join(','));
       }
 
-      let deviceName: string;
-      let deviceType: DeviceType;
-      let protocols: TransportProtocol[];
-
-      if (shareInfo.isShareDevice) {
-        // 互传联盟设备：标签显示厂商名 + 原始名称
-        deviceName = shareInfo.deviceName;
-        if (shareInfo.vendor !== '未知' && !shareInfo.deviceName.includes(shareInfo.vendor)) {
-          deviceName = `[${shareInfo.vendor}] ${shareInfo.deviceName}`;
-        }
-        deviceType = DeviceType.MOBILE;
-        protocols = [TransportProtocol.BLUETOOTH, TransportProtocol.WIFI_DIRECT];
-      } else {
-        // 非互传设备，仅显示名称
-        deviceName = result.deviceName || this.formatDeviceId(result.deviceId);
-        deviceType = DeviceType.MOBILE;
-        protocols = [TransportProtocol.BLUETOOTH];
+      // ⭐ 只显示互传联盟设备，过滤掉普通 BLE 设备（蓝牙耳机、手环等）
+      if (!shareInfo.isShareDevice) {
+        continue;
       }
+
+      // 互传联盟设备：标签显示厂商名 + 原始名称
+      const deviceName = shareInfo.vendor !== '未知' && !shareInfo.deviceName.includes(shareInfo.vendor)
+        ? `[${shareInfo.vendor}] ${shareInfo.deviceName}`
+        : shareInfo.deviceName;
+      const deviceType = DeviceType.MOBILE;
+      const protocols = [TransportProtocol.BLUETOOTH, TransportProtocol.WIFI_DIRECT];
 
       const existingIndex = this.discoveredDevices.findIndex(d => d.id === result.deviceId);
       if (existingIndex >= 0) {
-        // 更新已有设备信息（保留更准确的名称）
+        // 更新已有设备信息
         const existing = this.discoveredDevices[existingIndex];
         existing.signalStrength = result.rssi;
         existing.lastSeen = Date.now();
         existing.status = DeviceStatus.ONLINE;
-        // 如果新发现的设备名更有意义，则更新
-        if (shareInfo.isShareDevice && deviceName.length > existing.name.length) {
+        if (deviceName.length > existing.name.length) {
           existing.name = deviceName;
           existing.supportedProtocols = protocols;
         }
       } else {
-        const device = new Device(
+        this.discoveredDevices.push(new Device(
           result.deviceId,
           deviceName,
           '',
@@ -195,31 +199,37 @@ export class DeviceDiscoveryService {
           Date.now(),
           DeviceStatus.ONLINE,
           result.rssi
-        );
-        this.discoveredDevices.push(device);
+        ));
       }
     }
     this.notifyListeners();
   };
 
-  private formatDeviceId(deviceId: string): string {
-    if (deviceId.length >= 5) {
-      return `设备 ${deviceId.substring(deviceId.length - 5)}`;
-    }
-    return `设备 ${deviceId}`;
-  }
-
-  addDiscoveredDevice(device: Device): void {
-    const index = this.discoveredDevices.findIndex(d => d.id === device.id);
-    if (index >= 0) {
-      this.discoveredDevices[index] = device;
-    } else {
-      this.discoveredDevices.push(device);
-    }
-  }
-
   clearDevices(): void {
     this.discoveredDevices = [];
+  }
+
+  /**
+   * 启动过期设备清理定时器
+   */
+  private startExpiryCheck(): void {
+    this.expiryTimer = setInterval(() => {
+      const now = Date.now();
+      const before = this.discoveredDevices.length;
+      this.discoveredDevices = this.discoveredDevices.filter(d => (now - d.lastSeen) < DeviceDiscoveryService.DEVICE_EXPIRY_MS);
+      if (this.discoveredDevices.length !== before) {
+        hilog.info(0x0001, 'ToShare',
+          'Expired devices removed: %{public}d -> %{public}d', before, this.discoveredDevices.length);
+        this.notifyListeners();
+      }
+    }, DeviceDiscoveryService.EXPIRY_CHECK_INTERVAL_MS);
+  }
+
+  private stopExpiryCheck(): void {
+    if (this.expiryTimer >= 0) {
+      clearInterval(this.expiryTimer);
+      this.expiryTimer = -1;
+    }
   }
 
   /**

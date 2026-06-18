@@ -1,5 +1,5 @@
 {
-  "modelVersion": "6.1.1",
+  "modelVersion": "6.1.0",
   "name": "ToShare_HarmonyOS",
   "version": "1.0.0",
   "description": "ToShare - 本地近场文件共享应用（鸿蒙版）",
