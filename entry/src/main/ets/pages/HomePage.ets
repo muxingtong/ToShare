@@ -9,6 +9,7 @@ import { SendPage } from './SendPage';
 import { ReceivePage } from './ReceivePage';
 import { HistoryPage } from './HistoryPage';
 import { SettingsPage } from './SettingsPage';
+import { HotspotPage } from './HotspotPage';
 import { AppTheme, HeaderGradient, BrandGradient, WarmGradient } from '../theme/AppTheme';
 import { AppColors } from '../theme/AppColors';
 import { hilog } from '@kit.PerformanceAnalysisKit';
@@ -774,6 +775,16 @@ struct HomePage {
           selected: new SymbolGlyphModifier($r('sys.symbol.arrow_down'))
             .fontColor(['#6C5CE7'])
         }, '接收'))
+
+        TabContent() {
+          HotspotPage()
+        }
+        .tabBar(new BottomTabBarStyle({
+          normal: new SymbolGlyphModifier($r('sys.symbol.wifi'))
+            .fontColor(['#9995A0']),
+          selected: new SymbolGlyphModifier($r('sys.symbol.wifi'))
+            .fontColor(['#6C5CE7'])
+        }, '热点'))
 
         TabContent() {
           HistoryPage()
