@@ -47,6 +47,11 @@ struct HomePage {
     if (materialTypes.indexOf(hdsMaterial.MaterialType.IMMERSIVE) < 0) {
       this.materialLevel = hdsMaterial.MaterialLevel.SMOOTH;
     }
+
+    // 延迟启动扫描动画，避免在 build 阶段修改 @State
+    setTimeout(() => {
+      this.animScanPulse = 1.3;
+    }, 50);
   }
 
   aboutToDisappear(): void {
@@ -666,10 +671,7 @@ struct HomePage {
     .shadow({ radius: 8, color: '#08000000', offsetY: 1 })
     .margin({ left: 16, right: 16 })
     .onAppear(() => {
-      this.animScanPulse = 1.3;
-    })
-    .onDisAppear(() => {
-      this.animScanPulse = 1;
+      // 动画已在 aboutToAppear 中通过 setTimeout 启动
     })
   }
 
@@ -794,7 +796,7 @@ struct HomePage {
         }, '设置'))
       }
       .barOverlap(true)
-      .barPosition(BarPosition.End)
+      .barPosition(1) // BarPosition.End
       .vertical(false)
       .barFloatingStyle({
         barBottomMargin: 24,
@@ -804,7 +806,7 @@ struct HomePage {
         }
       })
       .scrollable(false)
-      .barMode(BarMode.Fixed)
+      .barMode(0) // BarMode.Fixed
       .animationDuration(200)
     }
     .width('100%')
