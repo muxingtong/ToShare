@@ -1,3 +1,7 @@
+/**
+ * 历史记录卡片——统一主题风格
+ */
+
 import { TransferHistory } from '../models/TransferSession';
 import { TransferStatus } from '../models/Enums';
 import { FileSizeFormatter } from '../utils/FileSizeFormatter';
@@ -11,51 +15,73 @@ export struct HistoryCard {
 
   build() {
     Row() {
+      // ====== 方向图标 ======
       Column()
-        .width(40)
-        .height(40)
-        .borderRadius(20)
-        .backgroundColor(this.history.isSender ? '#126C5CE7' : '#1200C9A7')
+        .width(44)
+        .height(44)
+        .borderRadius(16)
+        .linearGradient({
+          angle: 135,
+          colors: this.history.isSender ?
+            [['#6C5CE7', 0.0], ['#A29BFE', 1.0]] :
+            [['#00A383', 0.0], ['#00C9A7', 1.0]]
+        })
         .justifyContent(FlexAlign.Center)
-        .margin({ right: 12 })
+        .margin({ right: 14 })
 
+      // ====== 中间信息 ======
       Column() {
         Text(this.history.peerDeviceName)
-          .fontSize(16)
+          .fontSize(15)
           .fontWeight(FontWeight.Bold)
           .fontColor(AppTheme.getTextPrimary(this.isDark))
-        Text(`${this.history.fileCount}个文件 · ${FileSizeFormatter.formatSize(this.history.totalSize)}`)
-          .fontSize(13)
-          .fontColor(AppTheme.getTextSecondary(this.isDark))
-          .margin({ top: 2 })
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+        Row() {
+          Text(this.history.isSender ? '📤 发出' : '📥 收到')
+            .fontSize(11)
+            .fontColor(AppTheme.getTextSecondary(this.isDark))
+            .margin({ right: 8 })
+
+          Text(`${this.history.fileCount} 个文件`)
+            .fontSize(11)
+            .fontColor(AppTheme.getTextSecondary(this.isDark))
+            .margin({ right: 8 })
+
+          Text(FileSizeFormatter.formatSize(this.history.totalSize))
+            .fontSize(11)
+            .fontColor(AppTheme.getTextSecondary(this.isDark))
+        }
+        .margin({ top: 3 })
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
 
+      // ====== 状态标签 ======
       Text(this.getStatusText())
-        .fontSize(13)
+        .fontSize(12)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.getStatusColor())
         .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-        .borderRadius(10)
+        .borderRadius(8)
         .backgroundColor(this.getStatusBg())
     }
     .padding(16)
-    .borderRadius(18)
-    .backgroundColor('#F2FFFFFF')
-    .backgroundBlurStyle(BlurStyle.BACKGROUND_THIN)
-    .shadow({ radius: 4, color: '#0A000000', offsetY: 1 })
+    .borderRadius(20)
+    .backgroundColor(AppTheme.frostCardBg(this.isDark))
+    .shadow({ radius: 6, color: '#0A000000', offsetY: 1 })
     .margin({ bottom: 8 })
   }
 
   getStatusText(): string {
     switch (this.history.status) {
       case TransferStatus.COMPLETED:
-        return '已完成';
+        return '✓ 已完成';
       case TransferStatus.FAILED:
-        return '失败';
+        return '✗ 失败';
       case TransferStatus.CANCELLED:
-        return '已取消';
+        return '○ 已取消';
       default:
         return '';
     }

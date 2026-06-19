@@ -1,11 +1,15 @@
+/**
+ * 接收文件页面——沉浸光效毛玻璃风格
+ */
+
 import { TransferStatus } from '../models/Enums';
 import { TransferHistory } from '../models/TransferSession';
 import { TransferProgressRing } from '../components/TransferProgressRing';
 import { FileTransferService, TransferState, TransferStatusCallback } from '../services/FileTransferService';
 import { FileSizeFormatter } from '../utils/FileSizeFormatter';
 import { HistoryRepository } from '../services/HistoryRepository';
+import { AppTheme, AccentGradient } from '../theme/AppTheme';
 import { AppColors } from '../theme/AppColors';
-import { AccentGradient } from '../theme/AppTheme';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 
 const TAG = 'ReceivePage';
@@ -35,7 +39,7 @@ export struct ReceivePage {
   startReceiving(): void {
     if (!this.transferCallback) {
       this.transferCallback = new TransferStatusCallback(
-        (state: TransferState, message?: string, progress?: number, speed?: number) => {
+        (state: TransferState, message?: string, progress?: number, speed?: number): void => {
           this.onTransferState(state, message, progress, speed);
         }
       );
@@ -48,7 +52,6 @@ export struct ReceivePage {
     this.fileName = '';
     this.fileSize = 0;
     this.statusMessage = '正在准备接收...';
-
     this.transferService.startAsReceiver();
   }
 
@@ -58,7 +61,7 @@ export struct ReceivePage {
     if (speed !== undefined && speed > 0) {
       this.speed = speed;
       if (this.fileSize > 0 && this.progress > 0) {
-        const remaining = this.fileSize * (1 - this.progress);
+        const remaining: number = this.fileSize * (1 - this.progress);
         this.eta = remaining / speed;
       }
     }
@@ -99,11 +102,11 @@ export struct ReceivePage {
   cancelReceiving(): void {
     this.transferService.stop();
     this.isReceiving = false;
-    this.transferStatus = TransferStatus.FAILED;
+    this.transferStatus = TransferStatus.CANCELLED;
     this.statusMessage = '已取消';
   }
 
-  stopReceiving(): void {
+  resetState(): void {
     this.transferService.stop();
     this.isReceiving = false;
     this.transferStatus = TransferStatus.IDLE;
@@ -111,27 +114,35 @@ export struct ReceivePage {
     this.fileName = '';
     this.fileSize = 0;
     this.statusMessage = '';
+    this.speed = 0;
+    this.eta = -1;
   }
 
   private saveReceiveHistory(status: TransferStatus): void {
     if (!this.fileName) {
       this.fileName = 'unknown_file';
     }
-    const entry = new TransferHistory(
+    const entry: TransferHistory = new TransferHistory(
       `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      '附近设备',
-      false,
-      1,
-      this.fileSize,
-      Date.now(),
-      status,
-      [this.fileName]
+      '附近设备', false, 1, this.fileSize,
+      Date.now(), status, [this.fileName]
     );
     HistoryRepository.getInstance().addHistory(entry);
   }
 
+  private formatSpeed(bytesPerSecond: number): string {
+    if (bytesPerSecond <= 0) {
+      return '';
+    }
+    if (bytesPerSecond >= 1048576) {
+      return `${(bytesPerSecond / 1048576).toFixed(1)} MB/s`;
+    }
+    return `${(bytesPerSecond / 1024).toFixed(1)} KB/s`;
+  }
+
   build() {
     Column() {
+      // ====== 标题栏 ======
       Stack() {
         Column()
           .width('100%')
@@ -141,6 +152,11 @@ export struct ReceivePage {
             colors: this.accentGradient.colors
           })
         Row() {
+          Image($r('sys.symbol.arrow_down'))
+            .width(22)
+            .height(22)
+            .fillColor(Color.White)
+            .margin({ right: 10 })
           Text('接收文件')
             .fontSize(22)
             .fontWeight(FontWeight.Bold)
@@ -154,7 +170,9 @@ export struct ReceivePage {
       .height(80)
       .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
 
+      // ====== 内容区 ======
       if (!this.isReceiving) {
+        // 待接收状态
         Column() {
           Column()
             .width(100)
@@ -162,19 +180,23 @@ export struct ReceivePage {
             .borderRadius(50)
             .backgroundColor('#1200C9A7')
             .justifyContent(FlexAlign.Center)
-            .margin({ bottom: 20 })
+            .margin({ bottom: 24 })
+          Image($r('sys.symbol.arrow_down'))
+            .width(48)
+            .height(48)
+            .fillColor('#00C9A7')
 
           Text('等待接收文件')
             .fontSize(20)
             .fontWeight(FontWeight.Bold)
-            .fontColor('#1C1B1F')
-            .margin({ bottom: 8 })
+            .fontColor(AppTheme.getTextPrimary(this.isDark))
+            .margin({ top: 8, bottom: 8 })
 
           Text('双方设备需同时打开 ToShare\n点击下方按钮开始接收')
             .fontSize(14)
-            .fontColor('#625B71')
+            .fontColor(AppTheme.getTextSecondary(this.isDark))
             .textAlign(TextAlign.Center)
-            .margin({ bottom: 24 })
+            .margin({ bottom: 32 })
 
           Button() {
             Row() {
@@ -186,7 +208,7 @@ export struct ReceivePage {
               Text('开始接收')
                 .fontSize(15)
                 .fontColor(Color.White)
-                .fontWeight(FontWeight.Medium)
+                .fontWeight(FontWeight.Bold)
             }
           }
           .linearGradient({
@@ -194,9 +216,9 @@ export struct ReceivePage {
             colors: this.accentGradient.colors
           })
           .borderRadius(24)
-          .height(48)
-          .padding({ left: 32, right: 32 })
-          .shadow({ radius: 10, color: '#4000C9A7', offsetY: 4 })
+          .height(50)
+          .padding({ left: 36, right: 36 })
+          .shadow({ radius: 12, color: '#4000C9A7', offsetY: 4 })
           .onClick(() => { this.startReceiving(); })
         }
         .width('100%')
@@ -205,105 +227,176 @@ export struct ReceivePage {
         .alignItems(HorizontalAlign.Center)
         .padding(32)
       } else {
+        // 传输中/完成 状态
         Scroll() {
           Column() {
+            // 进度环
             TransferProgressRing({
               progress: this.progress,
               status: this.transferStatus === TransferStatus.COMPLETED ? TransferStatus.COMPLETED :
                 this.transferStatus === TransferStatus.FAILED ? TransferStatus.FAILED :
+                this.transferStatus === TransferStatus.CANCELLED ? TransferStatus.CANCELLED :
                 TransferStatus.TRANSFERRING,
-              ringSize: 120,
-              strokeWidth: 8
+              ringSize: 130,
+              strokeWidth: 10,
+              isDark: this.isDark
             })
             .margin({ top: 48, bottom: 24 })
 
-            Text(this.fileName || '正在建立连接...')
-              .fontSize(18)
-              .fontWeight(FontWeight.Bold)
-              .fontColor('#1C1B1F')
-              .margin({ bottom: 4 })
+            // 文件名
+            if (this.fileName.length > 0) {
+              Text(this.fileName)
+                .fontSize(17)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(AppTheme.getTextPrimary(this.isDark))
+                .margin({ bottom: 4 })
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+                .padding({ left: 32, right: 32 })
+            } else {
+              Text('正在建立连接...')
+                .fontSize(17)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(AppTheme.getTextPrimary(this.isDark))
+                .margin({ bottom: 4 })
+            }
 
+            // 文件大小
             if (this.fileSize > 0) {
               Text(FileSizeFormatter.formatSize(this.fileSize))
                 .fontSize(14)
-                .fontColor('#625B71')
+                .fontColor(AppTheme.getTextSecondary(this.isDark))
                 .margin({ bottom: 16 })
             }
 
+            // 状态消息
             Text(this.statusMessage)
               .fontSize(13)
-              .fontColor('#6C5CE7')
+              .fontColor(AppColors.PRIMARY)
+              .fontWeight(FontWeight.Medium)
               .margin({ bottom: 16 })
 
+            // 传输中 - 进度详情
             if (this.transferStatus === TransferStatus.TRANSFERRING) {
               Column() {
                 Row() {
                   Text(`${Math.round(this.progress * 100)}%`)
                     .fontSize(14)
-                    .fontColor('#625B71')
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor(AppTheme.getTextPrimary(this.isDark))
+
                   if (this.speed > 0) {
                     Text(' · ')
                       .fontSize(14)
-                      .fontColor('#625B71')
-                    Text(this.speed >= 1024 * 1024
-                      ? `${(this.speed / (1024 * 1024)).toFixed(1)} MB/s`
-                      : `${(this.speed / 1024).toFixed(1)} KB/s`)
+                      .fontColor(AppTheme.getTextSecondary(this.isDark))
+                    Text(this.formatSpeed(this.speed))
                       .fontSize(14)
-                      .fontColor('#6C5CE7')
+                      .fontWeight(FontWeight.Medium)
+                      .fontColor(AppColors.PRIMARY)
                   }
                 }
                 .margin({ bottom: 4 })
+
                 if (this.eta > 0) {
-                  Text(`剩余 ${Math.round(this.eta)} 秒`)
+                  Text(FileSizeFormatter.formatSize(this.progress * this.fileSize) +
+                    ' / ' + FileSizeFormatter.formatSize(this.fileSize))
                     .fontSize(12)
-                    .fontColor('#9E97AA')
-                    .margin({ bottom: 8 })
+                    .fontColor(AppTheme.getTextSecondary(this.isDark))
+                    .margin({ bottom: 2 })
+                  Text(`剩余约 ${Math.round(this.eta)} 秒`)
+                    .fontSize(12)
+                    .fontColor('#B0B0B0')
                 }
               }
               .margin({ bottom: 24 })
               .alignItems(HorizontalAlign.Center)
             }
 
+            // 准备中 - loading
             if (this.transferStatus === TransferStatus.PREPARING) {
               Row() {
                 LoadingProgress()
-                  .width(20)
-                  .height(20)
+                  .width(18)
+                  .height(18)
                   .color('#00C9A7')
-                  .margin({ right: 8 })
+                  .margin({ right: 8})
                 Text('正在创建连接...')
                   .fontSize(14)
-                  .fontColor('#625B71')
+                  .fontColor(AppTheme.getTextSecondary(this.isDark))
               }
               .margin({ bottom: 24 })
             }
 
+            // 操作按钮
             Row() {
               if (this.transferStatus === TransferStatus.TRANSFERRING ||
                   this.transferStatus === TransferStatus.PREPARING) {
-                Button('取消')
-                  .fontSize(14)
-                  .fontColor('#FF6B6B')
-                  .backgroundColor('#12FF6B6B')
-                  .borderRadius(20)
-                  .height(40)
-                  .padding({ left: 24, right: 24 })
-                  .onClick(() => { this.cancelReceiving(); })
+                Button() {
+                  Text('取消')
+                    .fontSize(14)
+                    .fontColor('#FF6B6B')
+                    .fontWeight(FontWeight.Medium)
+                }
+                .backgroundColor('#12FF6B6B')
+                .borderRadius(22)
+                .height(44)
+                .padding({ left: 30, right: 30 })
+                .onClick(() => { this.cancelReceiving(); })
               }
 
               if (this.transferStatus === TransferStatus.COMPLETED ||
-                  this.transferStatus === TransferStatus.FAILED) {
-                Button('返回')
+                  this.transferStatus === TransferStatus.FAILED ||
+                  this.transferStatus === TransferStatus.CANCELLED) {
+                Button() {
+                  Row() {
+                    if (this.transferStatus === TransferStatus.COMPLETED) {
+                      Text('✅ 已完成')
+                        .fontSize(14)
+                        .fontColor(Color.White)
+                        .fontWeight(FontWeight.Medium)
+                    } else {
+                      Text('重新开始')
+                        .fontSize(14)
+                        .fontColor(Color.White)
+                        .fontWeight(FontWeight.Medium)
+                    }
+                  }
+                }
+                .linearGradient({
+                  angle: 135,
+                  colors: this.transferStatus === TransferStatus.COMPLETED ?
+                    [['#00C9A7', 0.0], ['#55EFC4', 1.0]] :
+                    [['#6C5CE7', 0.0], ['#A29BFE', 1.0]]
+                })
+                .borderRadius(22)
+                .height(44)
+                .padding({ left: 30, right: 30 })
+                .shadow({ radius: 8, color: '#30000000', offsetY: 2 })
+                .onClick(() => {
+                  if (this.transferStatus === TransferStatus.COMPLETED) {
+                    this.resetState();
+                  } else {
+                    this.resetState();
+                  }
+                })
+
+                Column().width(12)
+
+                Button('关闭')
                   .fontSize(14)
-                  .fontColor('#6C5CE7')
-                  .backgroundColor('#126C5CE7')
-                  .borderRadius(20)
-                  .height(40)
+                  .fontColor(AppTheme.getTextSecondary(this.isDark))
+                  .backgroundColor('#F0F0F5')
+                  .borderRadius(22)
+                  .height(44)
                   .padding({ left: 24, right: 24 })
-                  .onClick(() => { this.stopReceiving(); })
+                  .onClick(() => { this.resetState(); })
               }
             }
             .margin({ top: 24 })
+
+            Column()
+              .width('100%')
+              .height(40)
           }
           .width('100%')
           .alignItems(HorizontalAlign.Center)
@@ -316,6 +409,6 @@ export struct ReceivePage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F0EFF5')
+    .backgroundColor(AppTheme.getBackground(this.isDark))
   }
 }
