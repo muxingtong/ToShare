@@ -748,9 +748,9 @@ struct HomePage {
         }
         .tabBar(new BottomTabBarStyle({
           normal: new SymbolGlyphModifier($r('sys.symbol.house_fill'))
-            .fontColor([$r('sys.color.ohos_id_color_bottom_tab_icon_off')]),
+            .fontColor(['#9995A0']),
           selected: new SymbolGlyphModifier($r('sys.symbol.house_fill'))
-            .fontColor([$r('sys.color.ohos_id_color_activated')])
+            .fontColor(['#6C5CE7'])
         }, '首页'))
 
         TabContent() {
@@ -758,9 +758,9 @@ struct HomePage {
         }
         .tabBar(new BottomTabBarStyle({
           normal: new SymbolGlyphModifier($r('sys.symbol.arrow_up'))
-            .fontColor([$r('sys.color.ohos_id_color_bottom_tab_icon_off')]),
+            .fontColor(['#9995A0']),
           selected: new SymbolGlyphModifier($r('sys.symbol.arrow_up'))
-            .fontColor([$r('sys.color.ohos_id_color_activated')])
+            .fontColor(['#6C5CE7'])
         }, '发送'))
 
         TabContent() {
@@ -768,9 +768,9 @@ struct HomePage {
         }
         .tabBar(new BottomTabBarStyle({
           normal: new SymbolGlyphModifier($r('sys.symbol.arrow_down'))
-            .fontColor([$r('sys.color.ohos_id_color_bottom_tab_icon_off')]),
+            .fontColor(['#9995A0']),
           selected: new SymbolGlyphModifier($r('sys.symbol.arrow_down'))
-            .fontColor([$r('sys.color.ohos_id_color_activated')])
+            .fontColor(['#6C5CE7'])
         }, '接收'))
 
         TabContent() {
@@ -778,9 +778,9 @@ struct HomePage {
         }
         .tabBar(new BottomTabBarStyle({
           normal: new SymbolGlyphModifier($r('sys.symbol.clock'))
-            .fontColor([$r('sys.color.ohos_id_color_bottom_tab_icon_off')]),
+            .fontColor(['#9995A0']),
           selected: new SymbolGlyphModifier($r('sys.symbol.clock'))
-            .fontColor([$r('sys.color.ohos_id_color_activated')])
+            .fontColor(['#6C5CE7'])
         }, '历史'))
 
         TabContent() {
@@ -788,9 +788,9 @@ struct HomePage {
         }
         .tabBar(new BottomTabBarStyle({
           normal: new SymbolGlyphModifier($r('sys.symbol.gearshape'))
-            .fontColor([$r('sys.color.ohos_id_color_bottom_tab_icon_off')]),
+            .fontColor(['#9995A0']),
           selected: new SymbolGlyphModifier($r('sys.symbol.gearshape'))
-            .fontColor([$r('sys.color.ohos_id_color_activated')])
+            .fontColor(['#6C5CE7'])
         }, '设置'))
       }
       .barOverlap(true)
