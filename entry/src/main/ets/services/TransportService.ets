@@ -110,6 +110,8 @@ export class TransportService {
 
   // 接收方异步处理
   private incomingHandler: ((pkt: Packet) => void) | null = null;
+  private recvLoopResolve: (() => void) | null = null;
+  private recvLoopReject: ((err: Error) => void) | null = null;
 
   // 接收方缓存
   private rcvFileInfo: FileInfoPayload | null = null;
@@ -393,6 +395,7 @@ export class TransportService {
     c.on('close', () => {
       hilog.info(0x0001, TAG, 'TCP closed');
       this.emitError('连接已断开');
+      if (this.recvLoopResolve) this.recvLoopResolve();
     });
     c.on('error', (e: Error) => {
       hilog.error(0x0001, TAG, 'TCP err: %{public}s', e.message);
@@ -694,10 +697,15 @@ export class TransportService {
 
   // ==================== 接收方 ====================
 
-  private async recvLoop(): Promise<void> {
-    return new Promise<void>((_res, _rej) => {
+  private recvLoop(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      this.recvLoopResolve = resolve;
+      this.recvLoopReject = reject;
       this.incomingHandler = (pkt: Packet) => {
-        this.handleIncoming(pkt).catch((e: Error) => hilog.error(0x0001, TAG, 'Incoming err: %s', e.message));
+        this.handleIncoming(pkt).catch((e: Error) => {
+          hilog.error(0x0001, TAG, 'Incoming err: %s', e.message);
+          if (this.recvLoopReject) this.recvLoopReject(e);
+        });
       };
     });
   }
@@ -755,6 +763,7 @@ export class TransportService {
         this.rcvFileInfo = null;
         if (this.rcvFileIndex >= this.rcvFileList.length - 1) {
           this.changePhase(TransferPhase.COMPLETE, '全部文件接收完成');
+          if (this.recvLoopResolve) this.recvLoopResolve();
         } else {
           this.rcvFileIndex++;
           this.changePhase(TransferPhase.METADATA, '等待下一个文件...');
@@ -797,6 +806,8 @@ export class TransportService {
     this.pktQueue = [];
     this.clearWait();
     this.incomingHandler = null;
+    this.recvLoopResolve = null;
+    this.recvLoopReject = null;
     this.rcvFileData = null;
     this.rcvFileInfo = null;
     this.rcvFileList = [];

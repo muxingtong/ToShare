@@ -3,7 +3,7 @@ import { TransferHistory } from '../models/TransferSession';
 import { TransferStatus } from '../models/Enums';
 import { Device } from '../models/Device';
 import { FilePickerService } from '../services/FilePickerService';
-import { FileTransferService, TransferState, TransferStatusCallback } from '../services/FileTransferService';
+import { FileTransferService, TransferState, SendFileInfo, TransferStatusCallback } from '../services/FileTransferService';
 import { HistoryRepository } from '../services/HistoryRepository';
 import { FileSizeFormatter } from '../utils/FileSizeFormatter';
 import { AppTheme, BrandGradient, HeaderGradient } from '../theme/AppTheme';
@@ -16,12 +16,14 @@ export struct SendPage {
   @State selectedDevice: Device | null = null;
   @State isTransferring: boolean = false;
   @State transferProgress: number = 0;
+  @State transferSpeed: string = '';
   @State transferMessage: string = '';
   @State isDark: boolean = false;
   private filePicker: FilePickerService = FilePickerService.getInstance();
   private transferService: FileTransferService = FileTransferService.getInstance();
   private headerGradient: HeaderGradient = new HeaderGradient();
   private brandGradient: BrandGradient = new BrandGradient();
+  private transferCb: TransferStatusCallback | null = null;
 
   aboutToAppear(): void {
     try {
@@ -46,36 +48,51 @@ export struct SendPage {
     AppStorage.setOrCreate('selectedDevice', this.selectedDevice);
     this.isTransferring = true;
     this.transferProgress = 0;
-    this.transferMessage = '';
+    this.transferMessage = '正在准备...';
+    this.transferSpeed = '';
 
-    for (let i = 0; i < this.selectedFiles.length; i++) {
-      const file = this.selectedFiles[i];
-      this.transferMessage = `准备发送: ${file.name}`;
-      try {
-        await this.transferService.startAsSender(file.path, file.name);
-        const result = await this.waitForTransferComplete();
-        if (result) {
-          this.transferProgress = (i + 1) / this.selectedFiles.length;
-        } else {
-          hilog.error(0x0001, 'ToShare', 'Transfer failed for: %{public}s', file.name);
-          break;
+    const sendFiles: SendFileInfo[] = this.selectedFiles.map(
+      (f) => new SendFileInfo(f.path, f.name, f.size)
+    );
+
+    this.transferCb = new TransferStatusCallback(
+      (state: TransferState, message?: string, progress?: number, speed?: number) => {
+        this.transferMessage = message || '';
+        if (progress !== undefined) {
+          this.transferProgress = progress;
         }
-      } catch (err) {
-        hilog.error(0x0001, 'ToShare', 'Transfer error: %{public}s', JSON.stringify(err));
-        break;
+        if (speed !== undefined && speed > 0) {
+          this.transferSpeed = speed >= 1024 * 1024
+            ? `${(speed / (1024 * 1024)).toFixed(1)} MB/s`
+            : `${(speed / 1024).toFixed(1)} KB/s`;
+        }
+        if (state === TransferState.COMPLETED) {
+          this.transferProgress = 1.0;
+          this.transferMessage = '全部发送完成!';
+          this.isTransferring = false;
+          this.saveSendHistory(TransferStatus.COMPLETED);
+          this.transferService.removeListener(this.transferCb!);
+          this.transferCb = null;
+        } else if (state === TransferState.ERROR) {
+          this.isTransferring = false;
+          this.saveSendHistory(TransferStatus.FAILED);
+          this.transferService.removeListener(this.transferCb!);
+          this.transferCb = null;
+        }
       }
-    }
+    );
+    this.transferService.addListener(this.transferCb);
 
+    await this.transferService.startAsSenderMulti(sendFiles);
+  }
+
+  cancelTransfer(): void {
+    this.transferService.stop();
     this.isTransferring = false;
-    if (this.transferProgress >= 1.0) {
-      this.transferMessage = '全部发送完成!';
-      this.saveSendHistory(TransferStatus.COMPLETED);
-    } else if (this.transferProgress > 0) {
-      this.transferMessage = '部分发送完成';
-      this.saveSendHistory(TransferStatus.COMPLETED);
-    } else {
-      this.transferMessage = '发送失败';
-      this.saveSendHistory(TransferStatus.FAILED);
+    this.transferMessage = '已取消';
+    if (this.transferCb) {
+      this.transferService.removeListener(this.transferCb);
+      this.transferCb = null;
     }
   }
 
@@ -93,26 +110,6 @@ export struct SendPage {
       fileNames
     );
     HistoryRepository.getInstance().addHistory(entry);
-  }
-
-  private waitForTransferComplete(): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
-      const callback = new TransferStatusCallback((state: TransferState, message?: string) => {
-        this.transferMessage = message || '';
-        if (state === TransferState.COMPLETED) {
-          this.transferService.removeListener(callback);
-          resolve(true);
-        } else if (state === TransferState.ERROR) {
-          this.transferService.removeListener(callback);
-          resolve(false);
-        }
-      });
-      this.transferService.addListener(callback);
-      setTimeout(() => {
-        this.transferService.removeListener(callback);
-        resolve(false);
-      }, 120000);
-    });
   }
 
   get totalSize(): number {
@@ -254,19 +251,34 @@ export struct SendPage {
           }
 
           if (this.isTransferring && this.transferMessage !== '') {
-            Row() {
-              Text(this.transferMessage)
-                .fontSize(13)
-                .fontColor('#6C5CE7')
-                .margin({ right: 6 })
-              if (this.transferProgress > 0 && this.transferProgress < 1) {
-                LoadingProgress()
-                  .width(16)
-                  .height(16)
-                  .color('#6C5CE7')
+            Column() {
+              Row() {
+                Text(this.transferMessage)
+                  .fontSize(13)
+                  .fontColor('#6C5CE7')
+                  .layoutWeight(1)
+                if (this.transferSpeed !== '') {
+                  Text(this.transferSpeed)
+                    .fontSize(12)
+                    .fontColor('#9E97AA')
+                    .margin({ left: 8 })
+                }
+              }
+              .width('100%')
+              .padding({ left: 20, right: 20, bottom: 6 })
+              if (this.transferProgress > 0) {
+                Row() {
+                  Progress({ value: this.transferProgress, total: 1, style: ProgressStyle.Linear })
+                    .width('100%')
+                    .height(4)
+                    .color('#6C5CE7')
+                    .backgroundColor('#1E6C5CE7')
+                    .borderRadius(2)
+                }
+                .padding({ left: 20, right: 20, bottom: 4 })
               }
             }
-            .padding({ top: 12, bottom: 4, left: 20 })
+            .padding({ top: 12 })
           }
 
           Column()
@@ -280,24 +292,59 @@ export struct SendPage {
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
 
-      Button() {
-        Text(this.isTransferring ? '传输中...' : '开始传输')
-          .fontSize(16)
-          .fontColor(Color.White)
-          .fontWeight(FontWeight.Medium)
+      if (this.isTransferring) {
+        Row() {
+          Button() {
+            Text('取消')
+              .fontSize(16)
+              .fontColor('#FF6B6B')
+              .fontWeight(FontWeight.Medium)
+          }
+          .width('42%')
+          .height(50)
+          .backgroundColor('#12FF6B6B')
+          .borderRadius(25)
+          .onClick(() => { this.cancelTransfer(); })
+
+          Button() {
+            Text('传输中...')
+              .fontSize(16)
+              .fontColor(Color.White)
+              .fontWeight(FontWeight.Medium)
+          }
+          .width('42%')
+          .height(50)
+          .linearGradient({
+            angle: this.brandGradient.angle,
+            colors: this.brandGradient.colors
+          })
+          .borderRadius(25)
+          .enabled(false)
+          .opacity(0.5)
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.Center)
+        .margin({ bottom: 20 })
+      } else {
+        Button() {
+          Text('开始传输')
+            .fontSize(16)
+            .fontColor(Color.White)
+            .fontWeight(FontWeight.Medium)
+        }
+        .width('88%')
+        .height(50)
+        .linearGradient({
+          angle: this.brandGradient.angle,
+          colors: this.brandGradient.colors
+        })
+        .borderRadius(25)
+        .shadow({ radius: 12, color: this.selectedFiles.length > 0 && this.selectedDevice !== null ? '#406C5CE7' : '#209E9E9E', offsetY: 4 })
+        .margin({ bottom: 20 })
+        .enabled(this.selectedFiles.length > 0 && this.selectedDevice !== null)
+        .opacity(this.selectedFiles.length > 0 && this.selectedDevice !== null ? 1.0 : 0.5)
+        .onClick(() => { this.startTransfer(); })
       }
-      .width('88%')
-      .height(50)
-      .linearGradient({
-        angle: this.brandGradient.angle,
-        colors: this.brandGradient.colors
-      })
-      .borderRadius(25)
-      .shadow({ radius: 12, color: this.isTransferring ? '#209E9E9E' : '#406C5CE7', offsetY: 4 })
-      .margin({ bottom: 20 })
-      .enabled(!this.isTransferring && this.selectedFiles.length > 0 && this.selectedDevice !== null)
-      .opacity(!this.isTransferring && this.selectedFiles.length > 0 && this.selectedDevice !== null ? 1.0 : 0.5)
-      .onClick(() => { this.startTransfer(); })
     }
     .width('100%')
     .height('100%')

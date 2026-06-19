@@ -35,8 +35,8 @@ export struct ReceivePage {
   startReceiving(): void {
     if (!this.transferCallback) {
       this.transferCallback = new TransferStatusCallback(
-        (state: TransferState, message?: string, progress?: number) => {
-          this.onTransferState(state, message, progress);
+        (state: TransferState, message?: string, progress?: number, speed?: number) => {
+          this.onTransferState(state, message, progress, speed);
         }
       );
       this.transferService.addListener(this.transferCallback);
@@ -52,22 +52,22 @@ export struct ReceivePage {
     this.transferService.startAsReceiver();
   }
 
-  private onTransferState(state: TransferState, message?: string, progress?: number): void {
+  private onTransferState(state: TransferState, message?: string, progress?: number, speed?: number): void {
     this.statusMessage = message || '';
+
+    if (speed !== undefined && speed > 0) {
+      this.speed = speed;
+      if (this.fileSize > 0 && this.progress > 0) {
+        const remaining = this.fileSize * (1 - this.progress);
+        this.eta = remaining / speed;
+      }
+    }
 
     switch (state) {
       case TransferState.CREATING_GROUP:
-        this.transferStatus = TransferStatus.PREPARING;
-        break;
       case TransferState.GROUP_CREATED:
-        this.transferStatus = TransferStatus.PREPARING;
-        break;
       case TransferState.P2P_CONNECTING:
-        this.transferStatus = TransferStatus.PREPARING;
-        break;
       case TransferState.P2P_CONNECTED:
-        this.transferStatus = TransferStatus.PREPARING;
-        break;
       case TransferState.SOCKET_LISTENING:
         this.transferStatus = TransferStatus.PREPARING;
         break;
@@ -75,22 +75,15 @@ export struct ReceivePage {
         this.transferStatus = TransferStatus.TRANSFERRING;
         if (progress !== undefined && progress > 0) {
           this.progress = progress;
-        } else if (message && message.includes('KB')) {
-          // parse rough progress from message like "接收中... 128.0 KB"
-          const match = message.match(/接收中\.\.\. ([0-9.]+) KB/);
-          if (match) {
-            const kb = parseFloat(match[1]);
-            if (this.fileSize > 0) {
-              this.progress = Math.min((kb * 1024) / this.fileSize, 0.99);
-            }
-          }
         }
         break;
       case TransferState.COMPLETED:
         this.transferStatus = TransferStatus.COMPLETED;
         this.progress = 1.0;
+        this.speed = 0;
+        this.eta = -1;
         if (message) {
-          this.fileName = message.replace('文件已保存: ', '');
+          this.fileName = message.replace('已保存: ', '');
         }
         this.saveReceiveHistory(TransferStatus.COMPLETED);
         break;
@@ -101,6 +94,13 @@ export struct ReceivePage {
       default:
         break;
     }
+  }
+
+  cancelReceiving(): void {
+    this.transferService.stop();
+    this.isReceiving = false;
+    this.transferStatus = TransferStatus.FAILED;
+    this.statusMessage = '已取消';
   }
 
   stopReceiving(): void {
@@ -236,18 +236,32 @@ export struct ReceivePage {
               .margin({ bottom: 16 })
 
             if (this.transferStatus === TransferStatus.TRANSFERRING) {
-              Row() {
-                Column()
-                  .width(6)
-                  .height(6)
-                  .borderRadius(3)
-                  .backgroundColor('#00C9A7')
-                  .margin({ right: 6 })
-                Text(`${Math.round(this.progress * 100)}%`)
-                  .fontSize(14)
-                  .fontColor('#625B71')
+              Column() {
+                Row() {
+                  Text(`${Math.round(this.progress * 100)}%`)
+                    .fontSize(14)
+                    .fontColor('#625B71')
+                  if (this.speed > 0) {
+                    Text(' · ')
+                      .fontSize(14)
+                      .fontColor('#625B71')
+                    Text(this.speed >= 1024 * 1024
+                      ? `${(this.speed / (1024 * 1024)).toFixed(1)} MB/s`
+                      : `${(this.speed / 1024).toFixed(1)} KB/s`)
+                      .fontSize(14)
+                      .fontColor('#6C5CE7')
+                  }
+                }
+                .margin({ bottom: 4 })
+                if (this.eta > 0) {
+                  Text(`剩余 ${Math.round(this.eta)} 秒`)
+                    .fontSize(12)
+                    .fontColor('#9E97AA')
+                    .margin({ bottom: 8 })
+                }
               }
               .margin({ bottom: 24 })
+              .alignItems(HorizontalAlign.Center)
             }
 
             if (this.transferStatus === TransferStatus.PREPARING) {
@@ -267,14 +281,14 @@ export struct ReceivePage {
             Row() {
               if (this.transferStatus === TransferStatus.TRANSFERRING ||
                   this.transferStatus === TransferStatus.PREPARING) {
-                Button('停止')
+                Button('取消')
                   .fontSize(14)
                   .fontColor('#FF6B6B')
                   .backgroundColor('#12FF6B6B')
                   .borderRadius(20)
                   .height(40)
                   .padding({ left: 24, right: 24 })
-                  .onClick(() => { this.stopReceiving(); })
+                  .onClick(() => { this.cancelReceiving(); })
               }
 
               if (this.transferStatus === TransferStatus.COMPLETED ||

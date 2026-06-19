@@ -146,12 +146,6 @@ function readUint16BE(view: DataView, offset: number): number {
 }
 
 /**
- * 预置头部缓冲区, 减少重复分配
- */
-const HEADER_BUFFER = new ArrayBuffer(PACKET_HEADER_LENGTH);
-const HEADER_VIEW = new DataView(HEADER_BUFFER);
-
-/**
  * 编码一个协议包
  */
 export function encodePacket(

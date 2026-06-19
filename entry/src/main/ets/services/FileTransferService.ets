@@ -37,9 +37,9 @@ export enum TransferState {
 }
 
 export class TransferStatusCallback {
-  onStatusChange: (state: TransferState, message?: string, progress?: number) => void;
+  onStatusChange: (state: TransferState, message?: string, progress?: number, speed?: number, eta?: number) => void;
 
-  constructor(cb: (state: TransferState, message?: string, progress?: number) => void) {
+  constructor(cb: (state: TransferState, message?: string, progress?: number, speed?: number, eta?: number) => void) {
     this.onStatusChange = cb;
   }
 }
@@ -90,10 +90,10 @@ export class FileTransferService {
     if (i >= 0) this.listeners.splice(i, 1);
   }
 
-  private notify(state: TransferState, msg?: string, p?: number): void {
+  private notify(state: TransferState, msg?: string, p?: number, speed?: number, eta?: number): void {
     this._state = state;
     for (const l of this.listeners) {
-      try { l.onStatusChange(state, msg, p); } catch (e) {
+      try { l.onStatusChange(state, msg, p, speed, eta); } catch (e) {
         hilog.error(0x0001, TAG, 'notify err: %s', JSON.stringify(e));
       }
     }
@@ -109,15 +109,12 @@ export class FileTransferService {
       this.onPhase(e);
     } else if (e.type === 'progress') {
       const p = e.progress || 0;
-      const msg = e.message || '';
-      this.notify(TransferState.TRANSFERRING, msg, p);
-      if (this.fileTotalCount > 0 && this.fileIndexCount > 0) {
-        this.notify(TransferState.TRANSFERRING, msg, (this.fileIndexCount + p) / this.fileTotalCount);
-      }
+      const sp = e.speed || 0;
+      const eta = e.eta !== undefined ? e.eta : -1;
+      const msg = (e.message || '') + (sp > 0 ? ` | ${this.formatSpeed(sp)}` : '');
+      this.notify(TransferState.TRANSFERRING, msg, p, sp, eta);
     } else if (e.type === 'handshake') {
       this.notify(TransferState.HANDSHAKE_DONE, e.message);
-    } else if (e.type === 'complete') {
-      this.notify(TransferState.COMPLETED, e.message, 1.0);
     } else if (e.type === 'error') {
       this.notify(TransferState.ERROR, e.message);
     }
@@ -243,6 +240,16 @@ export class FileTransferService {
     if (ext === 'ts') return 'text/typescript';
     if (ext === 'json') return 'application/json';
     return 'application/octet-stream';
+  }
+
+  private formatSpeed(bytesPerSec: number): string {
+    if (bytesPerSec >= 1024 * 1024) {
+      return `${(bytesPerSec / (1024 * 1024)).toFixed(1)} MB/s`;
+    }
+    if (bytesPerSec >= 1024) {
+      return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
+    }
+    return `${Math.round(bytesPerSec)} B/s`;
   }
 
   // ==================== 控制 ====================
