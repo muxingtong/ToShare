@@ -11,15 +11,12 @@ import { fileIo } from '@kit.CoreFileKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import {
   TransportService,
-  TransferPhase,
   TransportEvent,
   TransportEventCallback,
 } from './TransportService';
-import { FileInfoPayload } from '../utils/ShareTransferProtocol';
+import { TaskFileItem } from '../utils/WSTransferProtocol';
 
 const TAG = 'FileTransferService';
-
-export { TransferPhase };
 
 export enum TransferState {
   IDLE = 'idle',
@@ -123,15 +120,15 @@ export class FileTransferService {
   private onPhase(e: TransportEvent): void {
     const ph = e.phase;
     const msg = e.message || '';
-    if (ph === TransferPhase.IDLE) { this.notify(TransferState.IDLE); }
-    else if (ph === TransferPhase.HANDSHAKE) {
+    if (ph === "'idle'") { this.notify(TransferState.IDLE); }
+    else if (ph === "'handshake'") {
       if (msg.includes('Wi-Fi Direct') || msg.includes('通道')) { this.notify(TransferState.CREATING_GROUP, msg); }
       else if (msg.includes('等待')) { this.notify(TransferState.P2P_CONNECTING, msg); }
       else { this.notify(TransferState.HANDSHAKE, msg); }
-    } else if (ph === TransferPhase.METADATA) { this.notify(TransferState.METADATA, msg); }
-    else if (ph === TransferPhase.DATA) { this.notify(TransferState.TRANSFERRING, msg, e.progress); }
-    else if (ph === TransferPhase.COMPLETE) { this.notify(TransferState.COMPLETED, msg, 1.0); }
-    else if (ph === TransferPhase.ERROR) { this.notify(TransferState.ERROR, msg); }
+    } else if (ph === "'metadata'") { this.notify(TransferState.METADATA, msg); }
+    else if (ph === "'data'") { this.notify(TransferState.TRANSFERRING, msg, e.progress); }
+    else if (ph === "'complete'") { this.notify(TransferState.COMPLETED, msg, 1.0); }
+    else if (ph === "'error'") { this.notify(TransferState.ERROR, msg); }
   }
 
   // ==================== 发送方 ====================
@@ -152,9 +149,9 @@ export class FileTransferService {
       const data = await this.readFile(fileUri);
       if (!data) { this.notify(TransferState.ERROR, '文件读取失败'); return; }
 
-      const fi: FileInfoPayload = {
-        fileCount: 1, fileIndex: 0, fileName, fileSize: data.byteLength,
-        mimeType: this.mimeType(fileName), fileHash: '',
+      const fi: TaskFileItem = {
+        id: 0, name: fileName, size: data.byteLength,
+        mimeType: this.mimeType(fileName),
       };
 
       await this.transport.startAsSender([fi], () => data);
@@ -172,7 +169,7 @@ export class FileTransferService {
 
     try {
       this.notify(TransferState.METADATA, `读取 ${files.length} 个文件...`);
-      const infos: FileInfoPayload[] = [];
+      const infos: TaskFileItem[] = [];
       const dataMap = new Map<number, ArrayBuffer>();
 
       for (let i = 0; i < files.length; i++) {
@@ -180,13 +177,13 @@ export class FileTransferService {
         const data = await this.readFile(f.uri);
         if (!data) { this.notify(TransferState.ERROR, `读取失败: ${f.name}`); return; }
         infos.push({
-          fileCount: files.length, fileIndex: i, fileName: f.name,
-          fileSize: data.byteLength, mimeType: this.mimeType(f.name), fileHash: f.uri,
+          id: i, name: f.name, size: data.byteLength,
+          mimeType: this.mimeType(f.name),
         });
         dataMap.set(i, data);
       }
 
-      await this.transport.startAsSender(infos, (idx: number) => dataMap.get(idx) || null);
+      await this.transport.startAsSender(infos, (id: number) => dataMap.get(id) || null);
     } catch (err) {
       hilog.error(0x0001, TAG, 'multi sender err: %s', JSON.stringify(err));
       this.notify(TransferState.ERROR, `发送失败: ${(err as Error).message}`);

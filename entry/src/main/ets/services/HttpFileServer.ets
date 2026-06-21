@@ -10,6 +10,7 @@ import { HotspotFileItem } from '../models/HotspotTypes';
 
 const TAG = 'HttpFileServer';
 const UPLOAD_DIR: string = '/data/storage/el2/base/haps/entry/files/hotspot_uploads';
+const SHARE_DIR: string = '/data/storage/el2/base/haps/entry/files/hotspot_shares';
 
 function mimeFromExt(ext: string): string {
   const extLc: string = ext.toLowerCase();
@@ -169,6 +170,35 @@ export class HttpFileServer {
         this.tcpServer.close();
       } catch (_e) { /* ignore */ }
       this.tcpServer = null;
+    }
+  }
+
+  /** 将内存中的文件写入临时目录并注册到文件列表 */
+  registerMemoryFile(name: string, data: Uint8Array): void {
+    const savePath = SHARE_DIR + '/' + name;
+    const fd = fileIo.openSync(savePath, fileIo.OpenMode.CREATE | fileIo.OpenMode.WRITE_ONLY);
+    try {
+      fileIo.writeSync(fd.fd, data.buffer as ArrayBuffer);
+    } finally {
+      fileIo.closeSync(fd);
+    }
+    const ext: string = name.split('.').pop() || '';
+    const item: HotspotFileItem = {
+      name, size: data.byteLength,
+      mimeType: mimeFromExt(ext),
+      savePath,
+      direction: 'share',
+      completedAt: Date.now(),
+    };
+    this.files.push(item);
+  }
+
+  /** 清空共享文件列表（保留上传/下载的历史记录） */
+  clearMemoryFiles(): void {
+    for (let i = this.files.length - 1; i >= 0; i--) {
+      if (this.files[i].direction === 'share') {
+        this.files.splice(i, 1);
+      }
     }
   }
 
@@ -622,6 +652,9 @@ pos += he + 4;
   private ensureUploadDir(): void {
     try {
       fileIo.mkdirSync(UPLOAD_DIR, true);
+    } catch (_e) { /* ignore */ }
+    try {
+      fileIo.mkdirSync(SHARE_DIR, true);
     } catch (_e) { /* ignore */ }
   }
 
